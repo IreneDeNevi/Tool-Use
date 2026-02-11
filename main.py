@@ -6,6 +6,9 @@ Finally, a SummaryReportAgent should take the search results and create a summar
 
 Migrate from openAI to open source models for all the project, e.g., using HuggingFace transformers. 
 The code should be modular and well-structured to allow for easy swapping of different models and tools in the future.
+
+Build AI powered workflows and agents that are able to extract and analyze the content of websites - though you should always check whether that's legal in your specific case.
+There is a tool / library called "crawl4ai" 
 """
 
 
