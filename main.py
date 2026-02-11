@@ -1,3 +1,14 @@
+"""
+ADD a reserach web agent to do research based on a research plan created by the ResearchPlannerAgent. 
+The ResearchPlannerAgent should create a research plan that includes a list of search terms and a time frame for the web search. 
+The web search agent should then perform the web search using some API and return the results. 
+Finally, a SummaryReportAgent should take the search results and create a summary report in Markdown format.
+
+Migrate from openAI to open source models for all the project, e.g., using HuggingFace transformers. 
+The code should be modular and well-structured to allow for easy swapping of different models and tools in the future.
+"""
+
+
 from datetime import datetime
 import json
 import os
