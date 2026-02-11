@@ -9,6 +9,8 @@ The code should be modular and well-structured to allow for easy swapping of dif
 
 Build AI powered workflows and agents that are able to extract and analyze the content of websites - though you should always check whether that's legal in your specific case.
 There is a tool / library called "crawl4ai" 
+
+Manage short and long term memory for the agents, e.g., using a vector database like Pinecone or Weaviate, or using a local file-based solution.
 """
 
 
