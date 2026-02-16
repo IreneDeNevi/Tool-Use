@@ -1,9 +1,54 @@
 [project]
 name = "tool-use"
 version = "0.1.0"
-description = "Add your description here"
+description = "Open-source research pipeline with asyncio, crawl4ai, and long-term vector memory (ChromaDB)"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "python-dotenv>=1.1.1",
+requires-python = ">=3.10"
+authors = [
+  { name = "Irene De Nevi" }
 ]
+license = "MIT"
+
+# Core runtime dependencies (CPU-friendly defaults; pin as needed for reproducibility)
+dependencies = [
+  "transformers>=4.44,<5",
+  "accelerate>=0.33,<1",
+  "torch",  # install a platform-appropriate build; see README for guidance
+  "sentence-transformers>=3.0,<4",
+  "chromadb>=0.5,<1",
+  "pydantic>=2.8,<3",
+  "aiohttp>=3.9,<4",
+  "tenacity>=9,<10",
+  "python-dotenv>=1.0,<2",
+  "crawl4ai>=0.4,<1",
+  "urllib3>=2.2,<3"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.5.0",
+  "pytest>=8.0",
+  "mypy>=1.10"
+]
+
+[project.scripts]
+run = "main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+
+[tool.setuptools]
+packages = ["agents", "models", "tools"]
