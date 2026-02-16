@@ -21,7 +21,7 @@ dependencies = [
   "tenacity>=9,<10",
   "python-dotenv>=1.0,<2",
   "crawl4ai>=0.4,<1",
-  "urllib3>=2.2,<3"
+  "urllib3>=2.2,<3",
 ]
 
 [project.optional-dependencies]
