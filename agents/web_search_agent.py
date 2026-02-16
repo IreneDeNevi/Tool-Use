@@ -29,8 +29,7 @@ class WebSearchAgent:
         language = os.getenv("SEARXNG_LANGUAGE", "it")
         engines = None
         if os.getenv("SEARXNG_ENGINES"):
-            engines = os.getenv("SEARXNG_ENGINES").split(",")
-
+            engines = [e.strip() for e in os.getenv("SEARXNG_ENGINES").split(",") if e.strip()]
         # 4) Query parallele a SearXNG
         serp = await searxng_search_many(
             terms,
