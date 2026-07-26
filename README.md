@@ -5,7 +5,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
 ## Caratteristiche
 - **LLM locale** (HuggingFace Transformers) – facilmente sostituibile (Mistral, Llama, Phi‑3, ecc.)
 - **ResearchPlannerAgent** → crea piano di ricerca
-- **WebSearchAgent (async)** → ricerche in parallelo con Brave API + **crawl4ai** per l'estrazione dei contenuti
+- **WebSearchAgent (async)** → ricerche in parallelo con **SearXNG** + **crawl4ai** per l'estrazione dei contenuti
 - **SummaryReportAgent** → genera un **report Markdown** con RAG dalla memoria
 - **Memoria a lungo termine** con **ChromaDB** (persistenza su disco)
 - Architettura **modulare** per sostituire modelli e tool
@@ -17,15 +17,17 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
 ## Requisiti
 - Python **3.10+** (consigliato 3.11)
 - [uv](https://github.com/astral-sh/uv) (gestore dipendenze veloce)
-- Chiave API **Brave Search** (`BRAVE_API_KEY`) – registrati su Brave per ottenerla
+- **SearXNG** locale o remoto per la ricerca web
 - (Opzionale) GPU NVIDIA con driver + CUDA per performance dei modelli
 
 ### Dipendenze principali
 - `transformers`, `accelerate`, `torch`
 - `sentence-transformers`, `chromadb`
-- `aiohttp`, `tenacity`, `python-dotenv`
+- `aiohttp`, `tenacity`
 - `crawl4ai` – web scraping con Playwright
 - `searxng` – metasearch engine (container Docker)
+
+> `python-dotenv` is optional only if you want to support `.env` files; environment variables can also be passed directly in the shell.
 
 ### Strumenti aggiuntivi
 - **Docker & Docker Compose** – per eseguire SearXNG container
@@ -57,9 +59,21 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
    ```
 
 3. **Configura l'ambiente**
-   - Crea un file `.env` nella root del progetto con:
+   - Puoi creare un file `.env` nella root del progetto con:
      ```env
-     BRAVE_API_KEY=la_tua_chiave_brave
+     SEARXNG_BASE_URL=http://localhost:8080
+     SEARXNG_SECRET=change-me
+     SEARXNG_LANGUAGE=it
+     # Opzionale: specifica motori separati da virgola
+     # SEARXNG_ENGINES=duckduckgo,google
+     ```
+
+   - Oppure esegui l'app direttamente con le variabili in riga di comando:
+     ```bash
+     SEARXNG_BASE_URL=http://localhost:8080 \
+     SEARXNG_SECRET=change-me \
+     SEARXNG_LANGUAGE=it \
+     uv run python main.py
      ```
 
 4. **Avvia SearXNG (metasearch engine)**
@@ -90,7 +104,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
    ├── docker-compose.yml         # servizio SearXNG
    ├── main.py
    ├── pyproject.toml
-   ├── .env.example              # template variabili ambiente
+   ├── .env.local              # template variabili ambiente
    └── README.md
    ```
 
@@ -110,7 +124,7 @@ uv run python main.py
 ### Flusso di esecuzione:
 1. Inserisci la **richiesta di ricerca**.
 2. Il **ResearchPlannerAgent** genera un **piano di ricerca** e lo salva in **ChromaDB**.
-3. Il **WebSearchAgent** esegue ricerche tramite **Brave Search API** o **SearXNG**.
+3. Il **WebSearchAgent** esegue ricerche tramite **SearXNG**.
 4. Il **crawler** (Crawl4AI) estrae il contenuto dalle pagine web in parallelo (`asyncio`).
 5. I contenuti estratti vengono salvati in memoria persistente con embeddings semantici.
 6. Il **SummaryReportAgent** costruisce un **report Markdown** con RAG dalla memoria e lo salva in `summary_report.md`.
