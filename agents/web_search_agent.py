@@ -26,7 +26,7 @@ class WebSearchAgent:
         }.get(freshness, None)
 
         # 3) Config da .env
-        language = os.getenv("SEARXNG_LANGUAGE", "it")
+        language = os.getenv("SEARXNG_LANGUAGE")
         engines = None
         if os.getenv("SEARXNG_ENGINES"):
             engines = [e.strip() for e in os.getenv("SEARXNG_ENGINES").split(",") if e.strip()]
