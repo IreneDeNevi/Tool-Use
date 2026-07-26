@@ -15,6 +15,7 @@ dependencies = [
   "accelerate>=0.33,<1",
   "torch",  # install a platform-appropriate build; see README for guidance
   "sentence-transformers>=3.0,<4",
+  "sentencepiece>=0.1.99",
   "chromadb>=0.5,<1",
   "pydantic>=2.8,<3",
   "aiohttp>=3.9,<4",
