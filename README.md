@@ -182,6 +182,14 @@ Implementazione in [tools/crawel.py](tools/crawel.py).
 ##  Cambiare modello LLM
 Modifica `models/llm.py` e sostituisci `model_name` con un altro **instruct model** (es. `meta-llama/Meta-Llama-3-8B-Instruct`, `microsoft/Phi-3-mini-4k-instruct`). Verifica i requisiti hardware del modello scelto.
 
+Per usare il modello su HF senza scaricarlo in locale, imposta:
+```bash
+
+HUGGINGFACE_HUB_TOKEN=hf_xxx
+```
+Il token deve avere almeno lo scope `read`.
+
+
 ---
 
 ## Test rapidi
@@ -212,7 +220,6 @@ uv lock  # oppure semplicemente `uv sync`
 
 ### Generale
 - **Torch non si installa**: usa l'indice ufficiale PyTorch per la tua piattaforma (CPU/GPU) e ripeti `uv sync`.
-- **BRAVE_API_KEY mancante**: assicurati di avere la chiave nell'ambiente o in `.env`.
 - **Crawl lento**: riduci `urls` o aumenta `concurrency` con moderazione; attenzione ai limiti del sito target.
 
 ---
