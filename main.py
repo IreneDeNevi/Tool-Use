@@ -1,9 +1,12 @@
+import os
 import asyncio
 from models.llm import LocalLLM
 from tools.memory import VectorMemory
 from agents.research_planner import ResearchPlannerAgent
 from agents.web_search_agent import WebSearchAgent
 from agents.summary_agent import SummaryReportAgent
+
+# Environment variables can be provided by the shell at runtime.
 
 async def async_pipeline(user_query: str):
     llm = LocalLLM()

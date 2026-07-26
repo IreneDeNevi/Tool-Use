@@ -32,6 +32,9 @@ def _params(query: str,
         params["engines"] = ",".join(engines)
     return params
 
+def _searxng_secret() -> Optional[str]:
+    return os.getenv("SEARXNG_SECRET")
+
 @retry(
     reraise=True,
     stop=stop_after_attempt(3),
@@ -46,8 +49,12 @@ async def _query_single(session: aiohttp.ClientSession,
     url = f"{_base_url()}/search"
     params = _params(query, language, time_range, engines)
     timeout = aiohttp.ClientTimeout(total=30)
+    headers = {}
+    secret = _searxng_secret()
+    if secret:
+        headers["X-SEARXNG-SECRET"] = secret
 
-    async with session.get(url, params=params, timeout=timeout) as resp:
+    async with session.get(url, params=params, timeout=timeout, headers=headers) as resp:
         if resp.status != 200:
             text = await resp.text()
             raise SearxError(f"HTTP {resp.status}: {text[:200]}")
