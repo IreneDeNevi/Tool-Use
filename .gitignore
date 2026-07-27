@@ -1,5 +1,4 @@
 # Python-generated files
-.venv/
 memory_store/
 *.egg-info/
 __pycache__/
@@ -9,7 +8,7 @@ __pycache__/
 .vscode/
 
 # Virtual environments
-.venv
+**/.venv/**
 .DS_Store
 
 # Environment variables
