@@ -14,7 +14,7 @@ class VectorMemory:
     def __init__(
         self,
         path: str = "./memory_store",
-        collection: str = os.getenv("DEFAULT_COLLECTION", ""),
+        collection: str = os.getenv("DEFAULT_COLLECTION", "research-cache"),
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ):
         os.makedirs(path, exist_ok=True)
@@ -58,15 +58,17 @@ class VectorMemory:
         )
         # Normalizzazione output
         matches = []
-        docs = res.get("documents", [[]])[0]
-        metas = res.get("metadatas", [[]])[0]
-        ids = res.get("ids", [[]])[0]
-        dists = res.get("distances", [[]])[0] or res.get("embeddings", [[]])[0]
+        docs = res.get("documents", [[]])[0] if res else []
+        metas = res.get("metadatas", [[]])[0] if res else []
+        ids = res.get("ids", [[]])[0] if res else []
+        dists_list = res.get("distances", [[]])[0] if res and res.get("distances") else (
+            res.get("embeddings", [[]])[0] if res and res.get("embeddings") else []
+        )
         for i, doc in enumerate(docs):
             matches.append({
-                "id": ids[i],
+                "id": ids[i] if i < len(ids) else "",
                 "text": doc,
-                "metadata": metas[i],
-                "score": (1 - dists[i]) if isinstance(dists[i], (int, float)) and 0 <= dists[i] <= 1 else None
+                "metadata": metas[i] if i < len(metas) else {},
+                "score": (1 - dists_list[i]) if i < len(dists_list) and isinstance(dists_list[i], (int, float)) and 0 <= dists_list[i] <= 1 else None
             })
         return matches

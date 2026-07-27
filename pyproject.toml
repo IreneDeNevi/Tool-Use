@@ -1,7 +1,7 @@
 [project]
 name = "tool-use"
 version = "0.1.0"
-description = "Open-source research pipeline with asyncio, crawl4ai, and long-term vector memory (ChromaDB)"
+description = "Open-source research pipeline with asyncio, aiohttp/trafilatura crawling, and long-term vector memory (ChromaDB)"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -19,8 +19,9 @@ dependencies = [
   "chromadb>=0.5,<1",
   "pydantic>=2.8,<3",
   "aiohttp>=3.9,<4",
+  "beautifulsoup4>=4.12,<5",
+  "trafilatura>=1.6,<2",
   "tenacity>=9,<10",
-  "crawl4ai>=0.4,<1",
   "urllib3>=2.2,<3",
   "huggingface-hub>=0.16,<1",
 ]

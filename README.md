@@ -5,7 +5,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
 ## Caratteristiche
 - **LLM locale** (HuggingFace Transformers) – facilmente sostituibile (Mistral, Llama, Phi‑3, ecc.)
 - **ResearchPlannerAgent** → crea piano di ricerca
-- **WebSearchAgent (async)** → ricerche in parallelo con **SearXNG** + **crawl4ai** per l'estrazione dei contenuti
+- **WebSearchAgent (async)** → ricerche in parallelo con **SearXNG** + **aiohttp/trafilatura** per l'estrazione dei contenuti
 - **SummaryReportAgent** → genera un **report Markdown** con RAG dalla memoria
 - **Memoria a lungo termine** con **ChromaDB** (persistenza su disco)
 - Architettura **modulare** per sostituire modelli e tool
@@ -23,8 +23,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
 ### Dipendenze principali
 - `transformers`, `accelerate`, `torch`
 - `sentence-transformers`, `chromadb`
-- `aiohttp`, `tenacity`
-- `crawl4ai` – web scraping con Playwright
+- `aiohttp`, `tenacity`, `beautifulsoup4`, `trafilatura`
 - `searxng` – metasearch engine (container Docker)
 
 > `python-dotenv` is optional only if you want to support `.env` files; environment variables can also be passed directly in the shell.
@@ -51,12 +50,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
    > pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision torchaudio
    > ```
 
-2b. **Configura Crawl4AI** (web scraper con browser):
-   ```bash
-   uv run crawl4ai-setup
-   uv run python -m playwright install chromium
-   uv run crawl4ai-doctor  # verifica installazione
-   ```
+2b. **Nessuna configurazione browser richiesta**: il crawler usa `aiohttp` e `trafilatura`, quindi non serve installare Playwright.
 
 3. **Configura l'ambiente**
    - Puoi creare un file `.env` nella root del progetto con:
@@ -95,7 +89,7 @@ Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo te
    ├── tools/
    │   ├── memory.py
    │   ├── web_search.py
-   │   └── crawel.py              # web crawler con Crawl4AI
+   │   └── crawel.py              # web crawler con aiohttp + trafilatura
    ├── models/
    │   └── llm.py
    ├── searxng/
@@ -125,7 +119,7 @@ uv run python main.py
 1. Inserisci la **richiesta di ricerca**.
 2. Il **ResearchPlannerAgent** genera un **piano di ricerca** e lo salva in **ChromaDB**.
 3. Il **WebSearchAgent** esegue ricerche tramite **SearXNG**.
-4. Il **crawler** (Crawl4AI) estrae il contenuto dalle pagine web in parallelo (`asyncio`).
+4. Il **crawler** (aiohttp + trafilatura) estrae il contenuto dalle pagine web in parallelo (`asyncio`).
 5. I contenuti estratti vengono salvati in memoria persistente con embeddings semantici.
 6. Il **SummaryReportAgent** costruisce un **report Markdown** con RAG dalla memoria e lo salva in `summary_report.md`.
 
@@ -168,12 +162,12 @@ docker exec -it searxng bash
 curl "http://localhost:8080/search?q=test&format=json" | jq .
 ```
 
-##  Web Crawler (Crawl4AI)
-**Crawl4AI** fornisce estrazione di contenuti web con:
-- Browser headless Chromium via Playwright
-- Parsing JavaScript e dynamic content
-- Supporto per PDF, MHTML, screenshot export
-- Gestione robots.txt
+##  Web Crawler (aiohttp + trafilatura)
+Il crawler ora usa `aiohttp` per scaricare pagine e `trafilatura` / `BeautifulSoup` per estrarre il testo leggibile.
+- Soluzione leggera per HTML statico
+- Niente browser headless aggiuntivi
+- Gestione base di `robots.txt`
+- Estrae testo pulito per l'indicizzazione in ChromaDB
 
 Implementazione in [tools/crawel.py](tools/crawel.py).
 
@@ -209,9 +203,10 @@ uv lock  # oppure semplicemente `uv sync`
 
 ##  Troubleshooting
 
-### Setup Crawl4AI
-- **Chromium non installa**: assicurati di avere le librerie di sistema per Chromium: `sudo apt-get install libxcomposite1 libxdamage1 libxfixes3 libxrandr2`
-- **"Executable doesn't exist"**: esegui `uv run python -m playwright install chromium` per reinstallare il browser.
+### Troubleshooting HTTP crawler
+- **Errore di richiesta HTTP**: verifica che l'URL sia valido e che il sito consenta l'accesso.
+- **Timeout del download**: aumenta `timeout_seconds` in `tools/crawel.py` o riduci `concurrency`.
+- **Errore di parsing**: il crawler usa `trafilatura` e `BeautifulSoup`; alcune pagine con JavaScript dinamico possono restituire testo scarso.
 
 ### SearXNG Container
 - **Errore "Invalid settings.yml"**: Verifica che [searxng/settings.yml](searxng/settings.yml) sia valido. Rigenerato dal container se mancante.

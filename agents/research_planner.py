@@ -23,11 +23,42 @@ Genera un piano di ricerca con formato JSON:
 Rispondi SOLO con JSON valido.
 """
         raw = self.ask(prompt)
+        
         # estrai solo la parte JSON in caso il modello aggiunga testo prima/dopo
         start = raw.find("{")
         end = raw.rfind("}")
-        plan_json = raw[start:end+1] if start != -1 and end != -1 else "{}"
-        plan = json.loads(plan_json)
+        
+        plan = {}
+        if start != -1 and end != -1:
+            plan_json_str = raw[start:end+1]
+            
+            # Prova parsing con varie strategie
+            try:
+                plan = json.loads(plan_json_str)
+            except json.JSONDecodeError:
+                # Se fallisce, prova a correggere errori comuni
+                # Rimuovi commenti//
+                plan_json_str = '\n'.join([
+                    line.split('//')[0] if '//' in line else line
+                    for line in plan_json_str.split('\n')
+                ])
+                try:
+                    plan = json.loads(plan_json_str)
+                except json.JSONDecodeError:
+                    # Se ancora fallisce, usa default
+                    plan = {
+                        "core_topics": [user_input[:50]],
+                        "related_topics": [],
+                        "search_terms": [user_input[:50]]
+                    }
+
+        # Assicurati di avere i campi necessari
+        if not plan:
+            plan = {
+                "core_topics": [user_input[:50]],
+                "related_topics": [],
+                "search_terms": [user_input[:50]]
+            }
 
         # Salva in LTM
         ts = int(time.time())

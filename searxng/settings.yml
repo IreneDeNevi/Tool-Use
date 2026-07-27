@@ -74,8 +74,10 @@ search:
 
   # remove format to deny access, use lower case.
   # formats: [html, csv, json, rss]
+  # Allow JSON output for API clients.
   formats:
     - html
+    - json
 
 server:
   # Is overwritten by ${SEARXNG_PORT} and ${SEARXNG_BIND_ADDRESS}
