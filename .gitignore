@@ -8,7 +8,7 @@ __pycache__/
 .vscode/
 
 # Virtual environments
-**/.venv/**
+.venv/**
 .DS_Store
 
 # Environment variables — never commit secrets
