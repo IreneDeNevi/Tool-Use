@@ -11,5 +11,10 @@ __pycache__/
 **/.venv/**
 .DS_Store
 
-# Environment variables
-**/.env.local
+# Environment variables — never commit secrets
+.env
+# keep the example template
+!.env.example
+
+# SearXNG runtime data
+searxng/data/
