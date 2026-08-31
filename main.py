@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
+os.environ.setdefault("ORT_LOGGING_LEVEL", "3")  # suppress ONNX Runtime PCI/VMBUS noise
 import asyncio
 from models.llm import LocalLLM
 from tools.memory import VectorMemory
@@ -10,7 +13,7 @@ from agents.summary_agent import SummaryReportAgent
 
 async def async_pipeline(user_query: str):
     llm = LocalLLM()
-    memory = VectorMemory(path="./memory_store")
+    memory = VectorMemory()  # path/collection/model resolved from env inside VectorMemory
 
     # 1) Pianificazione (sync LLM)
     planner = ResearchPlannerAgent(llm, memory)

@@ -10,8 +10,27 @@ services:
       - ./searxng/data:/var/cache/searxng
     environment:
       - SEARXNG_SECRET=${SEARXNG_SECRET}
+    networks:
+      - tool-use-net
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    restart: unless-stopped
+    ports:
+      - "${CHROMA_PORT:-8000}:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=False
+    networks:
+      - tool-use-net
+
+volumes:
+  chroma_data:
 
 networks:
-  default:
-    name: searxng-net
+  tool-use-net:
+    name: tool-use-net
 

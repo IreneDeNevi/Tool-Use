@@ -24,6 +24,7 @@ dependencies = [
   "tenacity>=9,<10",
   "urllib3>=2.2,<3",
   "huggingface-hub>=0.16,<1",
+  "python-dotenv>=1.0,<2",
 ]
 
 [project.optional-dependencies]

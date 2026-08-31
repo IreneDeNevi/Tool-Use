@@ -5,6 +5,9 @@ Avoids interactive input issues and allows controlled testing.
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
+os.environ.setdefault("ORT_LOGGING_LEVEL", "3")  # suppress ONNX Runtime PCI/VMBUS noise
 import asyncio
 import sys
 from models.llm import LocalLLM
@@ -23,7 +26,7 @@ async def run_test_pipeline(user_query: str, test_num: int = 1):
     try:
         # Initialize components
         llm = LocalLLM()
-        memory = VectorMemory(path="./memory_store")
+        memory = VectorMemory()  # path/collection/model resolved from env inside VectorMemory
 
         # 1) Planning (sync LLM)
         print("[1/4] Research Planner Agent...")

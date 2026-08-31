@@ -201,6 +201,51 @@ uv lock  # oppure semplicemente `uv sync`
 
 ---
 
+## ⚠️ Rete aziendale / proxy SSL (ZScaler & simili)
+
+Alcuni ambienti aziendali utilizzano un proxy che intercetta il traffico HTTPS (es. **ZScaler**).  
+In questo caso, le chiamate verso `router.huggingface.co` vengono bloccate e il server restituisce una pagina HTML di blocco invece della risposta JSON attesa — causando errori come:
+
+```
+SSLCertVerificationError: certificate verify failed: self-signed certificate
+Expecting value: line 1 column 1 (char 0)
+```
+
+**Questo non è un bug del codice.** Le soluzioni dipendono dall'infrastruttura aziendale:
+
+| Soluzione | Dettaglio |
+|---|---|
+| **Esegui in GitHub Codespaces / devcontainer** | Il proxy aziendale non è attivo; è l'ambiente consigliato per questo progetto |
+| **Configura ZScaler per escludere HuggingFace** | Richiedi all'IT di aggiungere `*.huggingface.co` alla lista di bypass SSL |
+| **Installa il certificato CA aziendale** | Esporta il cert root ZScaler e aggiungilo a `REQUESTS_CA_BUNDLE=/path/to/corp.crt` nel `.env` |
+
+> Il progetto è pensato per essere eseguito in un ambiente Linux (container/Codespaces) con il comando: `python /workspaces/Tool-Use/main.py`
+
+---
+
+## 🔧 Possibili migliorie future
+
+### 1. Async LLM
+Sostituire `LocalLLM.chat()` con una versione `async` (`InferenceClient.chat_completion_async`) per non bloccare il loop `asyncio` durante le chiamate al modello. Utile quando planning e search vengono parallelizzati.
+
+### 2. Retry e backoff sulle chiamate LLM
+Aggiungere `@retry` di `tenacity` (già in dipendenze) al metodo `chat()` per gestire rate-limit e timeout transitori dell'API HuggingFace.
+
+### 3. `.gitignore`
+Aggiungere un `.gitignore` per escludere `.env`, `.venv/`, `memory_store/`, `__pycache__/` e i report generati (`summary_report*.md`).
+
+### 4. ChromaDB in modalità HTTP (microservizio)
+Con `docker compose up -d chromadb` e `CHROMA_HOST=localhost` nel `.env`, la memoria vettoriale gira come servizio separato — utile in ambienti multi-processo o per persistere la memoria tra riavvii del container applicativo.
+
+### 5. Streaming della risposta LLM
+Usare `stream=True` in `chat_completion` per stampare la risposta token per token, migliorando la UX per report lunghi.
+
+### 6. Valutazione qualità del report
+Aggiungere una fase di scoring post-report (es. con un secondo prompt LLM) che valuti copertura, coerenza e presenza di fonti — utile come quality gate automatico.
+
+
+---
+
 ##  Troubleshooting
 
 ### Troubleshooting HTTP crawler
