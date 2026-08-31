@@ -6,6 +6,17 @@ import uuid
 import os
 
 
+def _build_chroma_client(path: str) -> chromadb.ClientAPI:
+    """Return an HttpClient when CHROMA_HOST is set, otherwise a PersistentClient."""
+    host = os.getenv("CHROMA_HOST", "").strip()
+    if host:
+        port = int(os.getenv("CHROMA_PORT", "8000"))
+        ssl = os.getenv("CHROMA_SSL", "false").lower() in ("1", "true", "yes")
+        return chromadb.HttpClient(host=host, port=port, ssl=ssl)
+    os.makedirs(path, exist_ok=True)
+    return chromadb.PersistentClient(path=path)
+
+
 class VectorMemory:
     """
     Memoria vettoriale persistente in ChromaDB.
@@ -13,12 +24,11 @@ class VectorMemory:
     """
     def __init__(
         self,
-        path: str = "./memory_store",
-        collection: str = os.getenv("DEFAULT_COLLECTION", "research-cache"),
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+        path: str = os.getenv("CHROMA_PERSIST_PATH", "./memory_store"),
+        collection: str = os.getenv("CHROMA_COLLECTION", "research-cache"),
+        embedding_model: str = os.getenv("CHROMA_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     ):
-        os.makedirs(path, exist_ok=True)
-        self.client = chromadb.PersistentClient(path=path)
+        self.client = _build_chroma_client(path)
         self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=embedding_model
         )
