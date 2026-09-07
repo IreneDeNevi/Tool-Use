@@ -49,6 +49,8 @@ async def run_test_pipeline(user_query: str, test_num: int = 1) -> bool:
 		searcher = WebSearchAgent(memory)
 		results = await searcher.run(plan)
 		print(f"Results fetched: {len(results)} items")
+		if not results:
+			raise RuntimeError("SearXNG returned no results for the generated research plan")
 
 		print("\n[3/4] Summary Report Agent (RAG)...")
 		reporter = SummaryReportAgent(llm, memory)
