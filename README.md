@@ -1,269 +1,241 @@
-# Research Agents (Open-Source)
+# Tool-Use Research Pipeline
 
-Pipeline **open‑source** per ricerche web con **agenti**, **memoria a lungo termine** (ChromaDB) e **concorrenza** via `asyncio`.
+An open-source research pipeline that turns a natural-language question into a structured Markdown report. The project combines specialized agents, asynchronous web search and crawling, retrieval-augmented generation (RAG), and persistent vector memory.
 
-## Caratteristiche
-- **LLM locale** (HuggingFace Transformers) – facilmente sostituibile (Mistral, Llama, Phi‑3, ecc.)
-- **ResearchPlannerAgent** → crea piano di ricerca
-- **WebSearchAgent (async)** → ricerche in parallelo con **SearXNG** + **aiohttp/trafilatura** per l'estrazione dei contenuti
-- **SummaryReportAgent** → genera un **report Markdown** con RAG dalla memoria
-- **Memoria a lungo termine** con **ChromaDB** (persistenza su disco)
-- Architettura **modulare** per sostituire modelli e tool
+The pipeline is designed as a practical example of how an LLM can use external tools instead of generating an answer from its context window alone.
 
->  **Nota legale**: prima di effettuare crawling di un sito, verifica sempre Termini d'Uso e `robots.txt` del dominio. Il crawler qui può rispettare automaticamente `robots.txt`.
+## What It Does
 
----
+Given a research question, the application:
 
-## Requisiti
-- Python **3.10+** (consigliato 3.11)
-- [uv](https://github.com/astral-sh/uv) (gestore dipendenze veloce)
-- **SearXNG** locale o remoto per la ricerca web
-- (Opzionale) GPU NVIDIA con driver + CUDA per performance dei modelli
+1. Creates a research plan with the `ResearchPlannerAgent`.
+2. Sends the plan's search terms to a SearXNG instance.
+3. Crawls result pages concurrently with `aiohttp` and extracts readable text with `trafilatura`.
+4. Checks `robots.txt` before crawling and skips disallowed pages.
+5. Stores plans and extracted pages in ChromaDB using sentence-transformer embeddings.
+6. Retrieves relevant passages and asks the `SummaryReportAgent` to produce a Markdown report.
 
-### Dipendenze principali
-- `transformers`, `accelerate`, `torch`
-- `sentence-transformers`, `chromadb`
-- `aiohttp`, `tenacity`, `beautifulsoup4`, `trafilatura`
-- `searxng` – metasearch engine (container Docker)
+The default LLM integration uses the Hugging Face Inference API. Despite the historical `LocalLLM` class name, inference is remote unless the implementation is replaced with a local model backend.
 
-> `python-dotenv` is optional only if you want to support `.env` files; environment variables can also be passed directly in the shell.
+## Architecture
 
-### Strumenti aggiuntivi
-- **Docker & Docker Compose** – per eseguire SearXNG container
-- **SearXNG** – metasearch engine in esecuzione su `http://localhost:8080`
+```text
+User question
+      |
+      v
+ResearchPlannerAgent --+--> ChromaDB (research plan)
+      |
+      v
+WebSearchAgent --> SearXNG --> async crawler --> ChromaDB (web pages)
+      |
+      v
+SummaryReportAgent <-- semantic retrieval <-- ChromaDB
+      |
+      v
+summary_report.md
+```
 
----
+The main extension points are:
 
-##  Setup rapido
+- `agents/research_planner.py`: converts a question into a JSON research plan.
+- `agents/web_search_agent.py`: orchestrates search, crawling, and indexing.
+- `agents/summary_agent.py`: builds RAG context and generates the report.
+- `tools/web_search.py`: SearXNG client with bounded concurrency and retries.
+- `tools/crawel.py`: asynchronous crawler and text extraction.
+- `tools/memory.py`: local or HTTP ChromaDB adapter.
+- `models/llm.py`: Hugging Face Inference API adapter.
 
-1. **Clona** il repository e posizionati nella cartella del progetto.
+## Requirements
 
-2. **Crea l'ambiente** e installa le dipendenze con **uv**:
-   ```bash
-   uv venv -p 3.11
-   source .venv/bin/activate  # su Windows: .venv\\Scripts\\activate
-   uv sync  # genera anche uv.lock se assente
-   ```
+- Python 3.10+ (Python 3.11 is recommended)
+- `uv` for dependency management
+- Docker and Docker Compose for SearXNG
+- A read-only Hugging Face token
+- Network access to Hugging Face, SearXNG, and the pages being crawled
 
-   > **Torch**: su alcune piattaforme potresti voler installare una build specifica (CPU/GPU). Vedi istruzioni ufficiali PyTorch e scegli l'indice corretto. Esempio CPU-only:
-   > ```bash
-   > pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision torchaudio
-   > ```
+The first run also downloads the embedding model configured by `CHROMA_EMBEDDING_MODEL`.
 
-2b. **Nessuna configurazione browser richiesta**: il crawler usa `aiohttp` e `trafilatura`, quindi non serve installare Playwright.
+## Setup
 
-3. **Configura l'ambiente**
-   - Puoi creare un file `.env` nella root del progetto con:
-     ```env
-     SEARXNG_BASE_URL=http://localhost:8080
-     SEARXNG_SECRET=change-me
-     SEARXNG_LANGUAGE=it
-     # Opzionale: specifica motori separati da virgola
-     # SEARXNG_ENGINES=duckduckgo,google
-     ```
+Clone the repository and enter its directory:
 
-   - Oppure esegui l'app direttamente con le variabili in riga di comando:
-     ```bash
-     SEARXNG_BASE_URL=http://localhost:8080 \
-     SEARXNG_SECRET=change-me \
-     SEARXNG_LANGUAGE=it \
-     uv run python main.py
-     ```
-
-4. **Avvia SearXNG (metasearch engine)**
-   ```bash
-   docker compose up -d searxng
-   # Accedi a http://localhost:8080
-   docker compose logs searxng -f  # monitoraggio log
-   ```
-   > SearXNG è un metasearch engine open-source che aggrega risultati da più motori di ricerca. I volumi sono persistenti in `./searxng/data` e `./searxng/settings.yml`.
-
-5. **Struttura del progetto** (sintesi)
-   ```text
-   project/
-   ├── agents/
-   │   ├── base_agent.py
-   │   ├── research_planner.py
-   │   ├── web_search_agent.py
-   │   └── summary_agent.py
-   ├── tools/
-   │   ├── memory.py
-   │   ├── web_search.py
-   │   └── crawel.py              # web crawler con aiohttp + trafilatura
-   ├── models/
-   │   └── llm.py
-   ├── searxng/
-   │   ├── settings.yml           # configurazione SearXNG
-   │   └── data/                  # cache persistente
-   ├── docker-compose.yml         # servizio SearXNG
-   ├── main.py
-   ├── pyproject.toml
-   ├── .env.local              # template variabili ambiente
-   └── README.md
-   ```
-
----
-
-##  Esecuzione
-
-### Avvia i servizi
 ```bash
-# 1. Avvia SearXNG (metasearch engine)
-docker compose up -d searxng
+git clone https://github.com/IreneDeNevi/Tool-Use.git
+cd Tool-Use
+```
 
-# 2. Esegui l'applicazione principale
+Create an environment and install the locked dependencies:
+
+```bash
+uv venv --python 3.11
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
+uv sync
+```
+
+Create a local environment file from the template:
+
+```bash
+cp .env.example .env
+```
+
+Set `HUGGINGFACE_HUB_TOKEN` in `.env` to a read-only token. Review `LLM_MODEL_NAME` if a different instruct model is required. Do not commit `.env` or any token.
+
+## Start the Services
+
+Start SearXNG:
+
+```bash
+docker compose up -d searxng
+docker compose ps
+```
+
+SearXNG is available at <http://localhost:8080>. Verify its JSON endpoint before running the pipeline:
+
+```bash
+curl "http://localhost:8080/search?q=python&format=json"
+```
+
+ChromaDB does not need to be started for the default configuration: the application uses a persistent local client in `./memory_store`. To use the containerized ChromaDB service instead, set these values in `.env`:
+
+```env
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
+CHROMA_SSL=false
+```
+
+Then start it with `docker compose up -d chromadb`. The application still uses `CHROMA_PERSIST_PATH` when running in local mode.
+
+## Run the Application
+
+Interactive mode:
+
+```bash
 uv run python main.py
 ```
 
-### Flusso di esecuzione:
-1. Inserisci la **richiesta di ricerca**.
-2. Il **ResearchPlannerAgent** genera un **piano di ricerca** e lo salva in **ChromaDB**.
-3. Il **WebSearchAgent** esegue ricerche tramite **SearXNG**.
-4. Il **crawler** (aiohttp + trafilatura) estrae il contenuto dalle pagine web in parallelo (`asyncio`).
-5. I contenuti estratti vengono salvati in memoria persistente con embeddings semantici.
-6. Il **SummaryReportAgent** costruisce un **report Markdown** con RAG dalla memoria e lo salva in `summary_report.md`.
+Enter a research question when prompted. The generated report is written to `summary_report.md`.
 
-### Arresto dei servizi
+The package also exposes the `run` entry point:
+
 ```bash
-docker compose down
+uv run run
 ```
 
----
+## Test the Full Pipeline
 
-##  Memoria a lungo termine (ChromaDB)
-- Persistenza in `./memory_store`.
-- Salviamo piani di ricerca, pagine web estratte e report.
-- Recupero semantico via `SentenceTransformer` (all‑MiniLM‑L6‑v2).
+`test_pipeline.py` is an end-to-end smoke test rather than a unit-test suite. It runs three predefined research questions and writes `summary_report_test1.md`, `summary_report_test2.md`, and `summary_report_test3.md`.
 
-Per pulire la memoria:
+Run it after configuring the Hugging Face token and SearXNG:
+
 ```bash
-rm -rf memory_store/
+uv run python test_pipeline.py
 ```
 
-##  SearXNG (Metasearch Engine)
-**SearXNG** è un motore di ricerca privato, decentralizzato e open-source che aggrega risultati da multiple fonti.
+The smoke test validates that:
 
-- **Configurazione**: [searxng/settings.yml](searxng/settings.yml)
-- **Accesso**: `http://localhost:8080`
-- **Storage**: Dati persistenti in `./searxng/data`
+- the planner returns a plan;
+- SearXNG returns searchable results;
+- pages can be crawled and extracted;
+- documents are persisted in ChromaDB;
+- the report agent produces non-empty Markdown;
+- report files are created on disk.
 
-### Cmdline utili
+Before a full network test, run the inexpensive local checks:
+
 ```bash
-# Status del container
-docker compose ps
-
-# Log real-time
-docker logs -f searxng
-
-# Accedi alla bash del container
-docker exec -it searxng bash
-
-# Test della ricerca API
-curl "http://localhost:8080/search?q=test&format=json" | jq .
+python -m compileall -q agents models tools main.py test_pipeline.py
+docker compose config --quiet
 ```
 
-##  Web Crawler (aiohttp + trafilatura)
-Il crawler ora usa `aiohttp` per scaricare pagine e `trafilatura` / `BeautifulSoup` per estrarre il testo leggibile.
-- Soluzione leggera per HTML statico
-- Niente browser headless aggiuntivi
-- Gestione base di `robots.txt`
-- Estrae testo pulito per l'indicizzazione in ChromaDB
+These checks validate Python syntax and Compose configuration but do not replace the end-to-end smoke test.
 
-Implementazione in [tools/crawel.py](tools/crawel.py).
+## Configuration
 
----
+Important environment variables are defined in `.env.example`:
 
-##  Cambiare modello LLM
-Modifica `models/llm.py` e sostituisci `model_name` con un altro **instruct model** (es. `meta-llama/Meta-Llama-3-8B-Instruct`, `microsoft/Phi-3-mini-4k-instruct`). Verifica i requisiti hardware del modello scelto.
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `SEARXNG_BASE_URL` | SearXNG endpoint | `http://localhost:8080` |
+| `SEARXNG_SECRET` | Optional SearXNG request header | empty |
+| `SEARXNG_LANGUAGE` | Search language | unset |
+| `SEARXNG_ENGINES` | Comma-separated engine list | SearXNG defaults |
+| `HUGGINGFACE_HUB_TOKEN` | Authentication for inference | required |
+| `LLM_MODEL_NAME` | Hugging Face instruct model | `mistralai/Mistral-7B-Instruct-v0.3` |
+| `CHROMA_HOST` | Remote ChromaDB host; empty means local | empty |
+| `CHROMA_PORT` | Remote ChromaDB port | `8000` |
+| `CHROMA_PERSIST_PATH` | Local ChromaDB directory | `./memory_store` |
+| `CHROMA_COLLECTION` | ChromaDB collection name | `research-cache` |
+| `CHROMA_EMBEDDING_MODEL` | Sentence-transformer model | `sentence-transformers/all-MiniLM-L6-v2` |
 
-Per usare il modello su HF senza scaricarlo in locale, imposta:
+To clear local vector memory and start fresh:
+
 ```bash
-
-HUGGINGFACE_HUB_TOKEN=hf_xxx
+rm -rf memory_store
 ```
-Il token deve avere almeno lo scope `read`.
 
+## Project Structure
 
----
+```text
+.
+├── agents/                 # Planner, search, summary, and base agent classes
+├── models/                 # LLM integration
+├── tools/                  # Search, crawler, and vector-memory adapters
+├── searxng/                # SearXNG configuration and runtime data
+├── docker-compose.yml      # SearXNG and optional ChromaDB services
+├── main.py                 # Interactive application entry point
+├── test_pipeline.py        # End-to-end smoke test
+└── pyproject.toml          # Dependencies and tool configuration
+```
 
-## Test rapidi
-- Aumenta la concorrenza del crawler o della ricerca modificando `concurrency` in `tools/web_search.py` e `tools/crawler.py`.
-- Imposta `respect_robots=True/False` nel crawler (consigliato `True` in produzione).
+## Design Decisions and Trade-offs
 
----
+- **Agents have focused responsibilities.** Planning, retrieval, and summarization can be changed independently.
+- **Async I/O is used where it matters.** Search requests and page downloads are bounded by semaphores, avoiding an unbounded request burst.
+- **ChromaDB provides durable semantic memory.** The pipeline can reuse indexed content between runs instead of keeping all context in one prompt.
+- **SearXNG avoids coupling the application to a single search provider.** Search engines can be selected through configuration.
+- **The current LLM client is synchronous.** `LocalLLM.achat` is intended as an asynchronous compatibility layer, but the main planner and summarizer still call synchronous inference. A production version could use an async provider or move blocking inference to a worker.
 
-##  Note su uv.lock
-Questo progetto usa **uv**. Il file **`uv.lock`** è specifico della risoluzione delle dipendenze nel tuo ambiente. Per generarlo/aggiornarlo in modo affidabile:
+## Responsible Crawling
+
+Only crawl sources whose terms permit it. The crawler checks `robots.txt` by default, identifies itself with a user agent, uses request timeouts, and limits concurrency. This is a technical safeguard, not a substitute for reviewing the terms of each website.
+
+## Troubleshooting
+
+### `HUGGINGFACE_HUB_TOKEN is not set`
+
+Create `.env`, add a read-only Hugging Face token, and make sure the application is started from the repository root.
+
+### No search results are returned
+
+Check that SearXNG is running and that `SEARXNG_BASE_URL` points to the correct endpoint. Inspect logs with:
+
 ```bash
-uv lock  # oppure semplicemente `uv sync`
-```
-> Non includiamo qui un `uv.lock` pre‑generato per evitare discrepanze tra piattaforme (Linux/Mac/Windows) e varianti di Torch.
-
----
-
-## ⚠️ Rete aziendale / proxy SSL (ZScaler & simili)
-
-Alcuni ambienti aziendali utilizzano un proxy che intercetta il traffico HTTPS (es. **ZScaler**).  
-In questo caso, le chiamate verso `router.huggingface.co` vengono bloccate e il server restituisce una pagina HTML di blocco invece della risposta JSON attesa — causando errori come:
-
-```
-SSLCertVerificationError: certificate verify failed: self-signed certificate
-Expecting value: line 1 column 1 (char 0)
+docker compose logs -f searxng
 ```
 
-**Questo non è un bug del codice.** Le soluzioni dipendono dall'infrastruttura aziendale:
+### Hugging Face SSL or proxy errors
 
-| Soluzione | Dettaglio |
-|---|---|
-| **Esegui in GitHub Codespaces / devcontainer** | Il proxy aziendale non è attivo; è l'ambiente consigliato per questo progetto |
-| **Configura ZScaler per escludere HuggingFace** | Richiedi all'IT di aggiungere `*.huggingface.co` alla lista di bypass SSL |
-| **Installa il certificato CA aziendale** | Esporta il cert root ZScaler e aggiungilo a `REQUESTS_CA_BUNDLE=/path/to/corp.crt` nel `.env` |
+Corporate TLS interception can block Hugging Face requests. Use a trusted CA configuration provided by your organization or run the project in GitHub Codespaces. Do not disable certificate verification globally.
 
-> Il progetto è pensato per essere eseguito in un ambiente Linux (container/Codespaces) con il comando: `python /workspaces/Tool-Use/main.py`
+### The first run is slow
 
----
+The embedding model and other ML dependencies may be downloaded and initialized on the first run. Subsequent runs reuse the local cache.
 
-## 🔧 Possibili migliorie future
+## Technical Interview Talking Points
 
-### 1. Async LLM
-Sostituire `LocalLLM.chat()` con una versione `async` (`InferenceClient.chat_completion_async`) per non bloccare il loop `asyncio` durante le chiamate al modello. Utile quando planning e search vengono parallelizzati.
+This project demonstrates:
 
-### 2. Retry e backoff sulle chiamate LLM
-Aggiungere `@retry` di `tenacity` (già in dipendenze) al metodo `chat()` per gestire rate-limit e timeout transitori dell'API HuggingFace.
+- decomposition of an LLM workflow into explicit agent responsibilities;
+- tool calling through a search API and a crawler;
+- asynchronous I/O with bounded concurrency;
+- RAG backed by persistent vector storage;
+- configuration through environment variables;
+- service orchestration with Docker Compose;
+- defensive parsing when an LLM returns imperfect JSON;
+- responsible crawling with `robots.txt`, timeouts, and request limits.
 
-### 3. `.gitignore`
-Aggiungere un `.gitignore` per escludere `.env`, `.venv/`, `memory_store/`, `__pycache__/` e i report generati (`summary_report*.md`).
+Useful improvement directions include adding unit tests with mocked SearXNG and LLM clients, structured observability, source-level citations in the report, retry policies for inference, and an asynchronous LLM implementation.
 
-### 4. ChromaDB in modalità HTTP (microservizio)
-Con `docker compose up -d chromadb` e `CHROMA_HOST=localhost` nel `.env`, la memoria vettoriale gira come servizio separato — utile in ambienti multi-processo o per persistere la memoria tra riavvii del container applicativo.
+## License
 
-### 5. Streaming della risposta LLM
-Usare `stream=True` in `chat_completion` per stampare la risposta token per token, migliorando la UX per report lunghi.
-
-### 6. Valutazione qualità del report
-Aggiungere una fase di scoring post-report (es. con un secondo prompt LLM) che valuti copertura, coerenza e presenza di fonti — utile come quality gate automatico.
-
-
----
-
-##  Troubleshooting
-
-### Troubleshooting HTTP crawler
-- **Errore di richiesta HTTP**: verifica che l'URL sia valido e che il sito consenta l'accesso.
-- **Timeout del download**: aumenta `timeout_seconds` in `tools/crawel.py` o riduci `concurrency`.
-- **Errore di parsing**: il crawler usa `trafilatura` e `BeautifulSoup`; alcune pagine con JavaScript dinamico possono restituire testo scarso.
-
-### SearXNG Container
-- **Errore "Invalid settings.yml"**: Verifica che [searxng/settings.yml](searxng/settings.yml) sia valido. Rigenerato dal container se mancante.
-- **Porta 8080 in uso**: Cambia in [docker-compose.yml](docker-compose.yml) da `8080:8080` a `8081:8080`.
-- **Container in restart loop**: Controlla log con `docker logs searxng --tail 50`.
-
-### Generale
-- **Torch non si installa**: usa l'indice ufficiale PyTorch per la tua piattaforma (CPU/GPU) e ripeti `uv sync`.
-- **Crawl lento**: riduci `urls` o aumenta `concurrency` con moderazione; attenzione ai limiti del sito target.
-
----
-
-##  Licenza
-MIT
-
+This project is released under the MIT License. See [LICENSE](LICENSE).
