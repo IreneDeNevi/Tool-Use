@@ -54,6 +54,7 @@ The main extension points are:
 - Network access to Hugging Face, SearXNG, and the pages being crawled
 
 The first run also downloads the embedding model configured by `CHROMA_EMBEDDING_MODEL`.
+The repository is configured to install the CPU-only PyTorch build. CUDA and an NVIDIA GPU are not required because the LLM is accessed through the Hugging Face Inference API.
 
 ## Setup
 
@@ -64,13 +65,15 @@ git clone https://github.com/IreneDeNevi/Tool-Use.git
 cd Tool-Use
 ```
 
-Create an environment and install the locked dependencies:
+Create an environment and install the locked CPU-only dependencies:
 
 ```bash
 uv venv --python 3.11
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
 uv sync
 ```
+
+The PyTorch source is pinned in `pyproject.toml` to the official CPU wheel index, so `uv sync` does not install NVIDIA CUDA packages.
 
 Create a local environment file from the template:
 
