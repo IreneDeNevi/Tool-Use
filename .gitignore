@@ -7,6 +7,7 @@ __pycache__/
 .ruff_cache/
 .vscode/
 
+
 # Virtual environments
 .venv/**
 .DS_Store
@@ -18,3 +19,6 @@ __pycache__/
 
 # SearXNG runtime data
 searxng/data/
+
+# test folder
+tests/
