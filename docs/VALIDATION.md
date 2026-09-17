@@ -44,7 +44,7 @@ This checks isolated functions and contracts:
 - result ranking logic
 - HTML export output
 
-These tests are implemented in tests/test_refactor.py.
+These tests are implemented in [tests/test_refactor.py](tests/test_refactor.py).
 
 ### Level 2 — regression validation
 This guards against failures that are easy to miss in AI systems:
