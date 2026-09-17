@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+from io import BytesIO
 from typing import Any
 
 
@@ -35,8 +36,61 @@ def export_html_report(markdown_text: str, sources: list[dict[str, Any]], query:
 
 
 def export_pdf_report(markdown_text: str, sources: list[dict[str, Any]], query: str) -> bytes:
-    """Create a minimal PDF file in bytes from standard HTML-like content."""
-    html = export_html_report(markdown_text, sources, query)
-    pdf_prefix = b"%PDF-1.4\n"
-    content = html.encode("utf-8")
-    return pdf_prefix + b"%%EOF\n" + content
+    """Create a valid PDF report from the generated markdown summary."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, ListFlowable, ListItem
+
+    styles = getSampleStyleSheet()
+    body_style = ParagraphStyle(
+        "BodyText",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        spaceAfter=6,
+    )
+
+    story: list[Any] = [
+        Paragraph("Research report", styles["Title"]),
+        Paragraph(f"Query: {escape(query)}", body_style),
+        Spacer(1, 12),
+    ]
+
+    for line in markdown_text.splitlines():
+        cleaned = line.strip()
+        if not cleaned:
+            story.append(Spacer(1, 6))
+            continue
+
+        if cleaned.startswith("# "):
+            story.append(Paragraph(cleaned[2:], styles["Heading1"]))
+        elif cleaned.startswith("## "):
+            story.append(Paragraph(cleaned[3:], styles["Heading2"]))
+        elif cleaned.startswith("- "):
+            story.append(
+                ListFlowable(
+                    [ListItem(Paragraph(cleaned[2:], body_style))],
+                    bulletType="bullet",
+                    leftIndent=18,
+                    bulletFontName="Helvetica",
+                    bulletFontSize=10,
+                )
+            )
+        else:
+            story.append(Paragraph(cleaned.replace("**", ""), body_style))
+
+    story.append(Spacer(1, 12))
+    story.append(Paragraph("Sources", styles["Heading2"]))
+    for source in sources:
+        url = str(source.get("url") or "")
+        title = str(source.get("title") or source.get("url") or "Source")
+        if url:
+            story.append(Paragraph(f"- {escape(title)}: {escape(url)}", body_style))
+        else:
+            story.append(Paragraph(f"- {escape(title)}", body_style))
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    doc.build(story)
+    return buffer.getvalue()

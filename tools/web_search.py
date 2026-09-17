@@ -184,7 +184,7 @@ def rank_search_results(results: list[dict[str, Any]], query: str) -> list[dict[
         url = (item.get("url") or "").lower()
         text = f"{title} {snippet} {url}"
         overlap = sum(1 for token in q_tokens if token in text)
-        domain_score = 1.0 if any(domain in url for domain in ("python.org", "docs", "wikipedia.org", "arxiv.org", "github.com")) else 0.2
+        domain_score = 1.0 if any(domain in url for domain in ("wikipedia.org", "arxiv.org", "github.com")) else 0.2
         score = overlap + domain_score + (0.5 if item.get("title") else 0.0)
         ranked.append({**item, "relevance_score": round(score, 3)})
 

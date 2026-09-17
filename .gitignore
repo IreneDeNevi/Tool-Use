@@ -20,3 +20,8 @@ searxng/data/
 
 # Local artifacts
 artifacts/
+
+
+# Test
+test-results/
+tests/
