@@ -173,4 +173,22 @@ def _filter_results(results_batches: list[Any], allowed_domains: list[str] | Non
     return unfiltered
 
 
-__all__ = ["searxng_search_many", "SearxError", "_matches_allowed_domains"]
+def rank_search_results(results: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+    """Score and sort results by textual relevance and authority signal."""
+    q_tokens = {token.lower() for token in query.replace("-", " ").split() if token and len(token) > 2}
+    ranked: list[dict[str, Any]] = []
+
+    for item in results:
+        title = (item.get("title") or "").lower()
+        snippet = (item.get("snippet") or "").lower()
+        url = (item.get("url") or "").lower()
+        text = f"{title} {snippet} {url}"
+        overlap = sum(1 for token in q_tokens if token in text)
+        domain_score = 1.0 if any(domain in url for domain in ("python.org", "docs", "wikipedia.org", "arxiv.org", "github.com")) else 0.2
+        score = overlap + domain_score + (0.5 if item.get("title") else 0.0)
+        ranked.append({**item, "relevance_score": round(score, 3)})
+
+    return sorted(ranked, key=lambda item: item.get("relevance_score", 0.0), reverse=True)
+
+
+__all__ = ["searxng_search_many", "SearxError", "_matches_allowed_domains", "rank_search_results"]

@@ -8,11 +8,12 @@ from typing import Any
 
 from app.config import settings
 from app.schemas import ResearchPlan
-from eval.quality import assess_report_quality
+from app.report_export import export_html_report, export_pdf_report
+from eval.quality import assess_report_quality, attach_explicit_citations
 from models.factory import build_model_provider
 from tools.crawel import crawl_many
 from tools.memory import VectorMemory
-from tools.web_search import searxng_search_many
+from tools.web_search import rank_search_results, searxng_search_many
 
 
 class ResearchOrchestrator:
@@ -35,26 +36,35 @@ class ResearchOrchestrator:
                 "No search results were retrieved. The workflow stopped before summarization to avoid a black-box answer without evidence."
             )
 
-        documents = await self._fetch_and_index(search_results)
+        ranked_results = rank_search_results(search_results, user_query)
+        documents = await self._fetch_and_index(ranked_results)
         summary = SummarizerAgent(self.provider, self.memory).summarize(documents, user_query)
+        summary_with_citations = attach_explicit_citations(summary, [item.get("url") for item in ranked_results if item.get("url")])
 
         run_dir = Path(settings.project_root) / "artifacts" / "runs" / datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "plan.json").write_text(json.dumps(plan.model_dump(), ensure_ascii=False, indent=2), encoding="utf-8")
-        (run_dir / "search_results.json").write_text(json.dumps([result for result in search_results], ensure_ascii=False, indent=2), encoding="utf-8")
-        (run_dir / "summary.md").write_text(summary, encoding="utf-8")
+        (run_dir / "search_results.json").write_text(json.dumps([result for result in ranked_results], ensure_ascii=False, indent=2), encoding="utf-8")
+        (run_dir / "summary.md").write_text(summary_with_citations, encoding="utf-8")
 
-        source_urls = [item.get("url") for item in search_results if item.get("url")]
-        quality = assess_report_quality(summary, source_urls)
+        source_urls = [item.get("url") for item in ranked_results if item.get("url")]
+        quality = assess_report_quality(summary_with_citations, source_urls)
         (run_dir / "quality.json").write_text(json.dumps(quality, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        html_report = export_html_report(summary_with_citations, ranked_results, user_query)
+        pdf_report = export_pdf_report(summary_with_citations, ranked_results, user_query)
+        (run_dir / "report.html").write_text(html_report, encoding="utf-8")
+        (run_dir / "report.pdf").write_bytes(pdf_report)
 
         return {
             "plan": plan,
-            "search_results": search_results,
+            "search_results": ranked_results,
             "documents": documents,
-            "summary": summary,
+            "summary": summary_with_citations,
             "run_dir": str(run_dir),
             "quality": quality,
+            "report_html": html_report,
+            "report_pdf": pdf_report,
         }
 
     async def _search(self, plan: ResearchPlan) -> list[Any]:

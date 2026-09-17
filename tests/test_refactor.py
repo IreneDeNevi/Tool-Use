@@ -3,7 +3,8 @@ from app.config import Settings
 from eval.quality import assess_report_quality
 from models.factory import build_model_provider
 from agents.planner import PlannerAgent
-from tools.web_search import _matches_allowed_domains, searxng_search_many
+from tools.web_search import _matches_allowed_domains, rank_search_results, searxng_search_many
+from app.report_export import export_html_report
 
 
 def test_research_plan_schema_is_valid():
@@ -81,3 +82,33 @@ def test_searxng_search_many_retries_without_time_filter_when_filtered_results_a
     assert result[0]["url"] == "https://example.com/python"
     assert ("python", "year") in seen
     assert ("python", None) in seen
+
+
+def test_rank_search_results_prioritizes_relevant_sources():
+    ranked = rank_search_results([
+        {"title": "General article", "url": "https://example.com/other", "snippet": "Random content"},
+        {"title": "Python for Data Engineering", "url": "https://python.org/guide", "snippet": "Python is used in data engineering pipelines"},
+    ], "python data engineering")
+
+    assert ranked[0]["url"] == "https://python.org/guide"
+    assert ranked[0]["relevance_score"] >= ranked[1]["relevance_score"]
+
+
+def test_assess_report_quality_rewards_explicit_citations():
+    score = assess_report_quality(
+        "# Overview\nPython is useful in data engineering.[1](https://python.org)\n\n## Sources\n[1] https://python.org",
+        ["https://python.org"],
+    )
+    assert score["groundedness_score"] >= 0.8
+    assert score["citation_count"] >= 1
+
+
+def test_html_export_contains_summary_and_sources():
+    html = export_html_report(
+        "# Overview\nPython helps pipelines.[1](https://python.org)",
+        [{"title": "Python", "url": "https://python.org"}],
+        "Python data engineering",
+    )
+    assert "<html" in html.lower()
+    assert "python.org" in html
+    assert "Overview" in html
