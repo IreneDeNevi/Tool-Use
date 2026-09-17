@@ -2,9 +2,19 @@
 
 A portfolio-grade research agent that plans a query, searches the web, retrieves relevant pages, stores them in a vector memory, and generates a grounded Markdown report with source-aware citations.
 
-## Validation and testing
+## Executive summary
 
-The project includes a structured validation document explaining the live checks, regression tests, and evidence-first workflow: [docs/VALIDATION.md](docs/VALIDATION.md)
+This project is a production-minded tool-use system for research workflows. Instead of answering from model memory alone, it plans a research task, searches the web, retrieves supporting documents, ranks the results, stores them in vector memory, and produces a source-grounded report with explicit citations and evaluation metrics.
+
+The value of this project is not only the final summary, but the architecture behind it: model abstraction, retrieval-first execution, source validation, artifact generation, and transparent testing. It is designed to demonstrate practical AI engineering skills relevant to data and AI roles, especially where trust, grounding, and tool orchestration matter.
+
+## Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): project architecture and design decisions
+- [docs/SETUP.md](docs/SETUP.md): local setup and run guide
+- [docs/VALIDATION.md](docs/VALIDATION.md): structured testing and validation workflow
+
+## Validation and testing
 
 The legacy [test_pipeline.py](test_pipeline.py) script is deprecated and kept only for reference. The active validation path is the structured regression suite in [tests/test_refactor.py](tests/test_refactor.py).
 
