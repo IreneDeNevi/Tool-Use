@@ -85,11 +85,10 @@ async def run_test_pipeline(user_query: str, test_num: int = 1) -> bool:
 async def main() -> None:
 	"""Run all predefined test queries sequentially."""
 	queries = [
-		"Compare React, Vue, and Angular for mid-size projects",
-		"What are the latest developments in AI and open-source LLMs?",
-		"How do I configure a Kubernetes cluster with Prometheus monitoring?",
+		"React",
+		"Vue",
+		"Angular",
 	]
-
 	results = []
 	for index, query in enumerate(queries, 1):
 		success = await run_test_pipeline(query, test_num=index)

@@ -7,18 +7,16 @@ __pycache__/
 .ruff_cache/
 .vscode/
 
-
 # Virtual environments
 .venv/**
 .DS_Store
 
 # Environment variables — never commit secrets
 .env
-# keep the example template
 !.env.example
 
 # SearXNG runtime data
 searxng/data/
 
-# test folder
-tests/
+# Local artifacts
+artifacts/
