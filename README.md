@@ -1,6 +1,6 @@
 # Grounded Research Agent with Tool Use
 
-A portfolio-grade research agent that plans a query, searches the web, retrieves relevant pages, stores them in a vector memory, and generates a grounded Markdown report with source-aware citations.
+A research agent that plans a query, searches the web, retrieves relevant pages, stores them in a vector memory, and generates a grounded Markdown report with source-aware citations.
 
 ## Executive summary
 
